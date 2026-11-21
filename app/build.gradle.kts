@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -53,6 +54,13 @@ dependencies {
 
     implementation("androidx.compose.material:material-icons-extended")
 
+    //implementation(platform("com.google.firebase:firebase-bom:35.2.0"))
+    implementation(
+        platform("com.google.firebase:firebase-bom:34.15.0")
+    )
+    // Firebase Authentication
+    implementation("com.google.firebase:firebase-auth")
+
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
@@ -62,6 +70,9 @@ dependencies {
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.hilt.navigation.compose)
 
     // Room Database
     implementation(libs.androidx.room.runtime)

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "978866063409",
+    "project_id": "qevin-50065",
+    "storage_bucket": "qevin-50065.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:978866063409:android:aa419ff3d9b9a05a5e6d10",
+        "android_client_info": {
+          "package_name": "com.example.qevin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBlChQmbgy68lqfd9M3e8vEzGxkIgXljdU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

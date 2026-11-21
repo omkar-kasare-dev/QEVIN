@@ -1,7 +1,5 @@
 package com.example.qevin.feature.auth
 
-
-
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,7 +11,6 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
-
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,22 +24,26 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.qevin.core.designsystem.color.QevinColors
 import com.example.qevin.core.designsystem.component.QevinTextField
 import com.example.qevin.core.designsystem.dimension.QevinSpacing
+import com.example.qevin.feature.auth.login.LoginViewModel
 import com.example.qevin.feature.compnents.QevinAuthBackground
 import com.example.qevin.feature.compnents.QevinAuthPillButton
 import com.example.qevin.feature.compnents.QevinBrandHeader
 
 @Composable
 fun LoginScreen(
-    onLoginClick: (identifier: String, password: String) -> Unit,
     onGoogleSignInClick: () -> Unit,
-    onNavigateToSignUp: () -> Unit
+    onNavigateToSignUp: () -> Unit,
+    viewModel: LoginViewModel = hiltViewModel()
 ) {
     var identifier by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
+
+    val uiState by viewModel.uiState.collectAsState()
 
     QevinAuthBackground(topRightGlow = false) {
         Column(
@@ -71,7 +72,9 @@ fun LoginScreen(
                     style = MaterialTheme.typography.headlineMedium,
                     color = QevinColors.TextPrimary
                 )
+
                 Spacer(modifier = Modifier.height(QevinSpacing.ExtraSmall))
+
                 Text(
                     text = "Login to continue",
                     style = MaterialTheme.typography.bodyMedium,
@@ -81,12 +84,15 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(QevinSpacing.Large))
 
-            // Mobile Number or Email Field
+            // Email Field
             QevinTextField(
                 value = identifier,
-                onValueChange = { identifier = it },
-                label = "Mobile Number or Email",
-                placeholder = "Mobile Number or Email",
+                onValueChange = {
+                    identifier = it
+                    viewModel.clearError()
+                },
+                label = "Email Address",
+                placeholder = "Enter your email address",
                 keyboardType = KeyboardType.Email,
                 leadingIcon = {
                     Icon(
@@ -103,9 +109,12 @@ fun LoginScreen(
             // Password Field
             QevinTextField(
                 value = password,
-                onValueChange = { password = it },
+                onValueChange = {
+                    password = it
+                    viewModel.clearError()
+                },
                 label = "Password",
-                placeholder = "Password",
+                placeholder = "Enter your password",
                 keyboardType = KeyboardType.Password,
                 visualTransformation = if (isPasswordVisible) {
                     VisualTransformation.None
@@ -121,7 +130,11 @@ fun LoginScreen(
                     )
                 },
                 trailingIcon = {
-                    IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                    IconButton(
+                        onClick = {
+                            isPasswordVisible = !isPasswordVisible
+                        }
+                    ) {
                         Icon(
                             imageVector = if (isPasswordVisible) {
                                 Icons.Outlined.Visibility
@@ -136,17 +149,46 @@ fun LoginScreen(
                 }
             )
 
+            // Login Error
+            uiState.errorMessage?.let { error ->
+                Spacer(modifier = Modifier.height(QevinSpacing.Small))
+
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
             Spacer(modifier = Modifier.height(QevinSpacing.ExtraLarge))
 
             // Login CTA
             QevinAuthPillButton(
-                text = "Login",
-                onClick = { onLoginClick(identifier, password) }
+                text = if (uiState.isLoading) "Logging in..." else "Login",
+                onClick = {
+                    if (!uiState.isLoading) {
+                        viewModel.onLoginClicked(
+                            identifier = identifier,
+                            password = password
+                        )
+                    }
+                }
             )
+
+            if (uiState.isLoading) {
+                Spacer(modifier = Modifier.height(QevinSpacing.Default))
+
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = QevinColors.Lavender,
+                    strokeWidth = 2.dp
+                )
+            }
 
             Spacer(modifier = Modifier.height(QevinSpacing.Large))
 
-            // "or" Divider
+            // OR Divider
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -155,12 +197,16 @@ fun LoginScreen(
                     modifier = Modifier.weight(1f),
                     color = QevinColors.Divider
                 )
+
                 Text(
                     text = "or",
                     style = MaterialTheme.typography.bodySmall,
                     color = QevinColors.TextSecondary,
-                    modifier = Modifier.padding(horizontal = QevinSpacing.Default)
+                    modifier = Modifier.padding(
+                        horizontal = QevinSpacing.Default
+                    )
                 )
+
                 HorizontalDivider(
                     modifier = Modifier.weight(1f),
                     color = QevinColors.Divider
@@ -169,7 +215,7 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(QevinSpacing.Large))
 
-            // Continue with Google Button
+            // Continue with Google
             OutlinedButton(
                 onClick = onGoogleSignInClick,
                 modifier = Modifier
@@ -182,7 +228,6 @@ fun LoginScreen(
                 ),
                 border = BorderStroke(1.dp, QevinColors.Divider)
             ) {
-                // Replace with R.drawable.ic_google_logo
                 Text(
                     text = "G",
                     style = MaterialTheme.typography.titleMedium.copy(
@@ -190,7 +235,9 @@ fun LoginScreen(
                         color = Color(0xFF4285F4)
                     )
                 )
+
                 Spacer(modifier = Modifier.width(QevinSpacing.Medium))
+
                 Text(
                     text = "Continue with Google",
                     style = MaterialTheme.typography.titleSmall,
@@ -203,9 +250,12 @@ fun LoginScreen(
 
             // Sign Up Footer
             val signUpText = buildAnnotatedString {
-                withStyle(SpanStyle(color = QevinColors.TextSecondary)) {
+                withStyle(
+                    SpanStyle(color = QevinColors.TextSecondary)
+                ) {
                     append("Don't have an account? ")
                 }
+
                 withStyle(
                     SpanStyle(
                         color = QevinColors.Lavender,
@@ -219,7 +269,9 @@ fun LoginScreen(
             Text(
                 text = signUpText,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.clickable { onNavigateToSignUp() }
+                modifier = Modifier.clickable {
+                    onNavigateToSignUp()
+                }
             )
         }
     }

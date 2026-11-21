@@ -1,147 +1,7 @@
 package com.example.qevin.presentation.navigation
 
-/*
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.navigation.NavHostController
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
-import com.example.qevin.presentation.home.QEVINHomeScreen
-import com.example.qevin.presentation.splash.SplashScreen
-import kotlinx.coroutines.delay
 
-@Composable
-fun QevinNavGraph(
-    navController: NavHostController,
-    startDestination: String = AppRoute.Splash
-) {
-    NavHost(
-        navController = navController,
-        startDestination = startDestination
-    ) {
-
-        // Splash
-        composable(AppRoute.Splash) {
-
-            SplashScreen()
-
-            LaunchedEffect(Unit) {
-                delay(2200)
-
-                navController.navigate(AppRoute.Home) {
-                    popUpTo(AppRoute.Splash) {
-                        inclusive = true
-                    }
-                    launchSingleTop = true
-                }
-            }
-        }
-
-        // Main Home
-        composable(AppRoute.Home) {
-            QEVINHomeScreen()
-        }
-
-        // Onboarding
-        composable(AppRoute.Onboarding) {
-            PlaceholderScreen("Onboarding")
-        }
-
-        // Authentication
-        composable(AppRoute.Login) {
-            PlaceholderScreen("Login")
-        }
-
-        composable(AppRoute.Register) {
-            PlaceholderScreen("Create Account")
-        }
-
-        // New conversation
-        composable(AppRoute.NewChat) {
-            PlaceholderScreen("New Chat")
-        }
-
-        // Conversation with dynamic ID
-        composable(
-            route = AppRoute.Conversation,
-            arguments = listOf(
-                navArgument("conversationId") {
-                    type = NavType.StringType
-                }
-            )
-        ) { backStackEntry ->
-
-            val conversationId =
-                backStackEntry.arguments?.getString("conversationId")
-
-            PlaceholderScreen(
-                title = "Conversation",
-                subtitle = "Conversation ID: $conversationId"
-            )
-        }
-
-        // Profile
-        composable(AppRoute.Profile) {
-            PlaceholderScreen("Profile")
-        }
-
-        // Settings
-        composable(AppRoute.Settings) {
-            PlaceholderScreen("Settings")
-        }
-
-        // Privacy
-        composable(AppRoute.Privacy) {
-            PlaceholderScreen("Privacy & Security")
-        }
-
-        // Search
-        composable(AppRoute.Search) {
-            PlaceholderScreen("Search")
-        }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(
-    title: String,
-    subtitle: String = "This screen will be implemented in a future step."
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium
-        )
-    }
-}
-
- */
-
-
-
-
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -153,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -160,11 +21,19 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.qevin.feature.auth.LoginScreen
 import com.example.qevin.feature.auth.RegisterScreen
+import com.example.qevin.feature.auth.login.LoginNavigationEvent
+import com.example.qevin.feature.auth.login.LoginViewModel
+import com.example.qevin.feature.auth.register.RegisterViewModel
+import com.example.qevin.presentation.conversation.ConversationScreen
 import com.example.qevin.presentation.home.QEVINHomeScreen
 import com.example.qevin.presentation.onboarding.OnboardingScreen
+import com.example.qevin.presentation.splash.SplashDestination
 import com.example.qevin.presentation.splash.SplashScreen
+import com.example.qevin.presentation.splash.SplashViewModel
 
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun QevinNavGraph(
@@ -178,17 +47,53 @@ fun QevinNavGraph(
     ) {
 
         // 1. Splash
+
         composable(AppRoute.Splash) {
+
+            val splashViewModel: SplashViewModel = hiltViewModel()
 
             SplashScreen()
 
-            LaunchedEffect(Unit) {
-                delay(2000)
+            LaunchedEffect(splashViewModel) {
 
-                navController.navigate(AppRoute.Onboarding) {
+                Log.d(
+                    "QEVIN_NAVIGATION",
+                    "Waiting for authentication session"
+                )
+
+                val destination = splashViewModel.destination
+                    .filterNotNull()
+                    .first()
+
+                delay(1500)
+
+                val targetRoute = when (destination) {
+
+                    SplashDestination.HOME -> {
+                        Log.d(
+                            "QEVIN_NAVIGATION",
+                            "Existing session found. Opening Home."
+                        )
+
+                        AppRoute.Home
+                    }
+
+                    SplashDestination.ONBOARDING -> {
+                        Log.d(
+                            "QEVIN_NAVIGATION",
+                            "No session found. Opening Onboarding."
+                        )
+
+                        AppRoute.Onboarding
+                    }
+                }
+
+                navController.navigate(targetRoute) {
+
                     popUpTo(AppRoute.Splash) {
                         inclusive = true
                     }
+
                     launchSingleTop = true
                 }
             }
@@ -210,44 +115,72 @@ fun QevinNavGraph(
         }
 
         // 3. Login
+
         composable(AppRoute.Login) {
+
+            val loginViewModel: LoginViewModel = hiltViewModel()
+
+            // Observe one-time login navigation events
+            LaunchedEffect(loginViewModel) {
+                loginViewModel.navigationEvents.collect { event ->
+
+                    when (event) {
+
+                        LoginNavigationEvent.LoginSuccess -> {
+
+                            Log.d(
+                                "QEVIN_NAVIGATION",
+                                "Login successful. Navigating to Home."
+                            )
+
+                            navController.navigate(AppRoute.Home) {
+                                popUpTo(AppRoute.Login) {
+                                    inclusive = true
+                                }
+                                launchSingleTop = true
+                            }
+                        }
+                     }
+                }
+            }
+
             LoginScreen(
-                onLoginClick = { identifier, password ->
-                    // TODO: Trigger ViewModel login
-                    // On success, navigate to Home/Chats and clear auth backstack:
-                    // navController.navigate(AppRoute.Home) {
-                    //     popUpTo(AppRoute.Login) { inclusive = true }
-                    // }
-                },
                 onGoogleSignInClick = {
-                    // TODO: Trigger Google Sign-In flow
+                    // Google sign-in integration will be added later.
                 },
                 onNavigateToSignUp = {
-                    navController.navigate(AppRoute.Register) {
-                        launchSingleTop = true
-                    }
+                    navController.navigate(AppRoute.Register)
                 }
             )
         }
 
+
+        //------------------------------------
         // 4. Register
-        composable(AppRoute.Register) {
+
+        composable(
+            route = AppRoute.Register
+        ) {
+            val viewModel: RegisterViewModel = hiltViewModel()
+
             RegisterScreen(
+                viewModel = viewModel,
                 onBackClick = {
                     navController.popBackStack()
                 },
-                onCreateAccountClick = { name, mobileNumber, password ->
-                    // TODO: Trigger ViewModel registration
-                    // On success, navigate to Home/Chats and clear auth backstack:
-                    // navController.navigate(AppRoute.Home) {
-                    //     popUpTo(AppRoute.Login) { inclusive = true }
-                    // }
+                onRegistrationCompleted = {
+                    navController.navigate(AppRoute.Home) {
+                        popUpTo(AppRoute.Register) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
                 },
                 onTermsClick = {
-                    // TODO: Open Terms of Service screen or URL
+                    // Existing Terms navigation
                 },
                 onPrivacyPolicyClick = {
-                    // TODO: Open Privacy Policy screen or URL
+                    // Existing Privacy Policy navigation
                 }
             )
         }
@@ -282,7 +215,30 @@ fun QevinNavGraph(
 
         // 7. Home
         composable(AppRoute.Home) {
-            QEVINHomeScreen()
+
+            QEVINHomeScreen(
+                onConversationClick = { conversationId ->
+                    navController.navigate(
+                        AppRoute.conversation(conversationId)
+                    )
+                },
+                onNewChatClick = {
+                    navController.navigate(AppRoute.NewChat)
+                },
+                onSearchClick = {
+                    navController.navigate(AppRoute.Search)
+                },
+                onProfileClick = {
+                    navController.navigate(AppRoute.Profile)
+                },
+                onBottomTabClick = { tab ->
+                    when (tab) {
+                        "CALLS" -> navController.navigate(AppRoute.Calls)
+                        "PEOPLE" -> navController.navigate(AppRoute.People)
+                        "SETTINGS" -> navController.navigate(AppRoute.Settings)
+                    }
+                }
+            )
         }
 
         // 8. New Chat
@@ -291,6 +247,7 @@ fun QevinNavGraph(
         }
 
         // 9. Conversation
+        /*
         composable(
             route = AppRoute.Conversation,
             arguments = listOf(
@@ -309,7 +266,39 @@ fun QevinNavGraph(
                 description = "Conversation ID: $conversationId"
             )
         }
+*/
+        // 9. Conversation
+        composable(
+            route = AppRoute.Conversation,
+            arguments = listOf(
+                navArgument("conversationId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
 
+            val conversationId = backStackEntry.arguments
+                ?.getString("conversationId")
+                .orEmpty()
+
+            ConversationScreen(
+                conversationId = conversationId,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onVoiceCallClick = {
+                    // Voice call implementation will be added later.
+                },
+                onVideoCallClick = {
+                    // Video call implementation will be added later.
+                },
+                onMoreClick = {
+                    // Conversation menu will be added later.
+                }
+            )
+        }
+
+        //-------------------------------
         // 10. Calls
         composable(AppRoute.Calls) {
             NavigationPlaceholder("Calls")
