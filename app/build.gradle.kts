@@ -60,9 +60,14 @@ dependencies {
     )
     // Firebase Authentication
     implementation("com.google.firebase:firebase-auth")
+    // Cloud Firestore
+    implementation("com.google.firebase:firebase-firestore")
 
     // Navigation
     implementation(libs.androidx.navigation.compose)
+
+    // Coil - Local profile image rendering
+    implementation(libs.coil.compose)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)

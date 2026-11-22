@@ -1,6 +1,5 @@
 package com.example.qevin.presentation.navigation
 
-
 import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,7 +11,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -24,13 +22,18 @@ import com.example.qevin.feature.auth.RegisterScreen
 import com.example.qevin.feature.auth.login.LoginNavigationEvent
 import com.example.qevin.feature.auth.login.LoginViewModel
 import com.example.qevin.feature.auth.register.RegisterViewModel
+import com.example.qevin.presentation.calls.CallsScreen
 import com.example.qevin.presentation.conversation.ConversationScreen
+import com.example.qevin.presentation.conversation.NewConversationScreen
 import com.example.qevin.presentation.home.QEVINHomeScreen
 import com.example.qevin.presentation.onboarding.OnboardingScreen
+import com.example.qevin.presentation.people.PeopleScreen
+import com.example.qevin.presentation.profile.ProfileScreen
+import com.example.qevin.presentation.search.SearchScreen
+import com.example.qevin.presentation.settings.SettingsScreen
 import com.example.qevin.presentation.splash.SplashDestination
 import com.example.qevin.presentation.splash.SplashScreen
 import com.example.qevin.presentation.splash.SplashViewModel
-
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -47,7 +50,6 @@ fun QevinNavGraph(
     ) {
 
         // 1. Splash
-
         composable(AppRoute.Splash) {
 
             val splashViewModel: SplashViewModel = hiltViewModel()
@@ -115,12 +117,10 @@ fun QevinNavGraph(
         }
 
         // 3. Login
-
         composable(AppRoute.Login) {
 
             val loginViewModel: LoginViewModel = hiltViewModel()
 
-            // Observe one-time login navigation events
             LaunchedEffect(loginViewModel) {
                 loginViewModel.navigationEvents.collect { event ->
 
@@ -140,7 +140,7 @@ fun QevinNavGraph(
                                 launchSingleTop = true
                             }
                         }
-                     }
+                    }
                 }
             }
 
@@ -154,10 +154,7 @@ fun QevinNavGraph(
             )
         }
 
-
-        //------------------------------------
         // 4. Register
-
         composable(
             route = AppRoute.Register
         ) {
@@ -177,17 +174,16 @@ fun QevinNavGraph(
                     }
                 },
                 onTermsClick = {
-                    // Existing Terms navigation
+                    // Terms navigation
                 },
                 onPrivacyPolicyClick = {
-                    // Existing Privacy Policy navigation
+                    // Privacy Policy navigation
                 }
             )
         }
 
         // 5. Forgot Password
         composable(AppRoute.ForgotPassword) {
-
             NavigationPlaceholder(
                 title = "Forgot Password"
             )
@@ -243,30 +239,23 @@ fun QevinNavGraph(
 
         // 8. New Chat
         composable(AppRoute.NewChat) {
-            NavigationPlaceholder("New Chat")
-        }
-
-        // 9. Conversation
-        /*
-        composable(
-            route = AppRoute.Conversation,
-            arguments = listOf(
-                navArgument("conversationId") {
-                    type = NavType.StringType
+            NewConversationScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onNewGroupClick = {
+                    // Handle new group creation navigation
+                },
+                onContactSelected = { contactId ->
+                    navController.navigate(AppRoute.conversation(contactId)) {
+                        popUpTo(AppRoute.NewChat) {
+                            inclusive = true
+                        }
+                    }
                 }
             )
-        ) { backStackEntry ->
-
-            val conversationId = backStackEntry.arguments
-                ?.getString("conversationId")
-                .orEmpty()
-
-            NavigationPlaceholder(
-                title = "Conversation",
-                description = "Conversation ID: $conversationId"
-            )
         }
-*/
+
         // 9. Conversation
         composable(
             route = AppRoute.Conversation,
@@ -287,36 +276,56 @@ fun QevinNavGraph(
                     navController.popBackStack()
                 },
                 onVoiceCallClick = {
-                    // Voice call implementation will be added later.
+                    // Voice call action
                 },
                 onVideoCallClick = {
-                    // Video call implementation will be added later.
+                    // Video call action
                 },
                 onMoreClick = {
-                    // Conversation menu will be added later.
+                    // Conversation options menu
                 }
             )
         }
 
-        //-------------------------------
         // 10. Calls
         composable(AppRoute.Calls) {
-            NavigationPlaceholder("Calls")
+            CallsScreen(
+                onCallClick = { callId ->
+                    navController.navigate(AppRoute.conversation(callId))
+                }
+            )
         }
 
         // 11. People
         composable(AppRoute.People) {
-            NavigationPlaceholder("People")
+            PeopleScreen(
+                onContactClick = { contactId ->
+                    navController.navigate(AppRoute.conversation(contactId))
+                }
+            )
         }
 
         // 12. Profile
+        // 12. Profile
         composable(AppRoute.Profile) {
-            NavigationPlaceholder("Profile")
+
+            ProfileScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onEditProfileClick = {
+                    // Edit Profile implementation: Phase 1, Step 5
+                }
+            )
         }
 
         // 13. Settings
         composable(AppRoute.Settings) {
-            NavigationPlaceholder("Settings")
+            SettingsScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                }
+            )
         }
 
         // 14. Privacy
@@ -326,7 +335,14 @@ fun QevinNavGraph(
 
         // 15. Search
         composable(AppRoute.Search) {
-            NavigationPlaceholder("Search")
+            SearchScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onResultClick = { conversationId ->
+                    navController.navigate(AppRoute.conversation(conversationId))
+                }
+            )
         }
     }
 }

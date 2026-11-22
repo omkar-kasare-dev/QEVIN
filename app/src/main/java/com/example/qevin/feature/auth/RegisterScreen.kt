@@ -389,6 +389,22 @@ fun RegisterScreen(
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
+//----------------------------
+                if (
+                    uiState.isPhoneVerified &&
+                    !uiState.isRegistrationCompleted &&
+                    !uiState.isLoading &&
+                    uiState.errorMessage != null
+                ) {
+                    Button(
+                        onClick = {
+                            viewModel.retryProfileCreation()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Retry Profile Creation")
+                    }
+                }
 
                 // Registration Complete
                 if (uiState.isRegistrationCompleted) {

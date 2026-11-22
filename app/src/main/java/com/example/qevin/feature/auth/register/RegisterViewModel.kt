@@ -1,176 +1,174 @@
 package com.example.qevin.feature.auth.register
 
 import android.app.Activity
+import android.util.Patterns
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.qevin.domain.model.QevinUser
+import com.example.qevin.domain.model.UserProfile
 import com.example.qevin.domain.repository.AuthRepository
+import com.example.qevin.domain.repository.ProfileRepository
 import com.example.qevin.domain.usecase.ValidateRegistrationInputUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @HiltViewModel
 class RegisterViewModel @Inject constructor(
     private val validateRegistrationInput: ValidateRegistrationInputUseCase,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val profileRepository: ProfileRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RegisterUiState())
     val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
 
-    // STEP 1: Create account using email and password
-    /*
+    private var pendingVerifiedUser: QevinUser? = null
+    private var isProfileCreationInProgress = false
+    private var isProfileCreationCompleted = false
+
+    // ---------------------------------------------------------
+    // STEP 1: EMAIL REGISTRATION
+    // ---------------------------------------------------------
+
     fun onCreateAccountClicked(
-        activity: Activity,
         displayName: String,
         email: String,
         phoneNumber: String,
         password: String
     ) {
-        val error = validateRegistrationInput(
-            displayName = displayName,
-            email=email,
-            phoneNumber = phoneNumber,
-            password = password
-        )
+        val normalizedName = displayName.trim()
+        val normalizedEmail = email.trim()
+        val normalizedPhone = phoneNumber.trim()
 
-        if (error != null) {
+        if (_uiState.value.isLoading) return
+
+        if (_uiState.value.isEmailAccountCreated) {
             _uiState.update {
-                it.copy(errorMessage = error)
+                it.copy(
+                    errorMessage = "Email account is already created. Continue with phone verification."
+                )
             }
             return
         }
 
-        if (!android.util.Patterns.EMAIL_ADDRESS
-                .matcher(email.trim())
-                .matches()
-        ) {
+        // Phone number is not required during email registration.
+        val validationError = validateRegistrationInput(
+            displayName = normalizedName,
+            phoneNumber = normalizedPhone,
+            password = password,
+            requirePhoneNumber = false
+        )
+
+        if (validationError != null) {
             _uiState.update {
-                it.copy(errorMessage = "Please enter a valid email address.")
+                it.copy(errorMessage = validationError)
+            }
+            return
+        }
+
+        if (!Patterns.EMAIL_ADDRESS.matcher(normalizedEmail).matches()) {
+            _uiState.update {
+                it.copy(errorMessage = "Enter a valid email address.")
             }
             return
         }
 
         _uiState.update {
             it.copy(
-                isLoading = true,
+                displayName = normalizedName,
+                email = normalizedEmail,
+                phoneNumber = normalizedPhone,
                 errorMessage = null,
-                displayName = displayName.trim(),
-                email = email.trim(),
-                phoneNumber = phoneNumber.trim(),
+                isLoading = true,
                 isOtpSent = false,
                 isPhoneVerified = false,
                 isRegistrationCompleted = false,
-                verificationId = null
+                verificationId = null,
+                otp = ""
             )
         }
 
         viewModelScope.launch {
             try {
-                val result = authRepository.registerWithEmail(
-                    displayName = displayName.trim(),
-                    email = email.trim(),
+                authRepository.registerWithEmail(
+                    displayName = normalizedName,
+                    email = normalizedEmail,
                     password = password
-                )
-
-                result.fold(
-                    onSuccess = {
-                        _uiState.update {
-                            it.copy(isLoading = false)
-                        }
-
-                        // Email account created.
-                        // Now request phone OTP.
-                        requestPhoneOtp(
-                            activity = activity,
-                            phoneNumber = phoneNumber.trim()
+                ).onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isEmailAccountCreated = true
                         )
-                    },
-                    onFailure = { exception ->
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                errorMessage = exception.message
-                                    ?: "Account registration failed."
-                            )
-                        }
                     }
-                )
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (exception: Exception) {
+                }.onFailure { exception ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = exception.message
+                                ?: "Unable to create your account."
+                        )
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = exception.message
-                            ?: "Something went wrong."
+                        errorMessage = e.message
+                            ?: "Something went wrong during registration."
                     )
                 }
             }
         }
     }
-*/
-    //-------------------------------------
 
-    fun onCreateAccountClicked(
-        displayName: String,
-        email: String,
-        phoneNumber: String,
-        password: String
-    ) {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    errorMessage = null
-                )
-            }
+    // ---------------------------------------------------------
+    // STEP 2: PHONE NUMBER VALIDATION
+    // ---------------------------------------------------------
 
-            val result = authRepository.registerWithEmail(
-                displayName = displayName.trim(),
-                email = email.trim(),
-                password = password
-            )
+    private fun normalizePhoneNumber(phoneNumber: String): String? {
+        val input = phoneNumber.trim()
+        val digits = input.filter { it.isDigit() }
 
-            result.fold(
-                onSuccess = { user ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            isEmailAccountCreated = true,
-                            displayName = displayName.trim(),
-                            email = email.trim(),
-                            phoneNumber = phoneNumber.trim()
-                        )
-                    }
-                },
-                onFailure = { exception ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            isEmailAccountCreated = false,
-                            errorMessage = exception.message
-                                ?: "Unable to create email account."
-                        )
-                    }
-                }
-            )
+        return when {
+            // Indian 10-digit mobile number.
+            digits.length == 10 && !input.startsWith("+") ->
+                "+91$digits"
+
+            // Number entered as 91XXXXXXXXXX.
+            digits.length == 12 && digits.startsWith("91") ->
+                "+$digits"
+
+            // Already entered in international format.
+            input.startsWith("+") &&
+                    digits.length in 11..15 ->
+                "+$digits"
+
+            else -> null
         }
     }
 
-    //-----------------------------------------------------------------------
-    // STEP 2: Request phone OTP
+    // ---------------------------------------------------------
+    // STEP 3: SEND PHONE OTP
+    // ---------------------------------------------------------
+
     fun requestPhoneOtp(
         activity: Activity,
         phoneNumber: String
     ) {
+        val currentState = _uiState.value
 
-        if (!_uiState.value.isEmailAccountCreated) {
+        if (currentState.isLoading) return
+
+        if (!currentState.isEmailAccountCreated) {
             _uiState.update {
                 it.copy(
                     errorMessage = "Please create your email account first."
@@ -179,62 +177,75 @@ class RegisterViewModel @Inject constructor(
             return
         }
 
+        if (currentState.isPhoneVerified) return
+
+        val normalizedPhone = normalizePhoneNumber(phoneNumber)
+
+        if (normalizedPhone == null) {
+            _uiState.update {
+                it.copy(
+                    errorMessage = "Enter a valid mobile number with country code, or a 10-digit Indian mobile number."
+                )
+            }
+            return
+        }
+
         _uiState.update {
             it.copy(
-                isLoading = true,
-                errorMessage = null
+                phoneNumber = normalizedPhone,
+                errorMessage = null,
+                isLoading = true
             )
         }
 
         authRepository.sendPhoneOtp(
             activity = activity,
-            phoneNumber = phoneNumber,
+            phoneNumber = normalizedPhone,
+
             onOtpCodeSent = { verificationId ->
                 _uiState.update {
                     it.copy(
-                        isLoading = false,
-                        isOtpSent = true,
                         verificationId = verificationId,
-                        errorMessage = null
+                        isOtpSent = true,
+                        isLoading = false,
+                        errorMessage = null,
                     )
                 }
             },
-            onAutoVerified = {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        isPhoneVerified = true,
-                        isRegistrationCompleted = true,
-                        isOtpSent = false,
-                        errorMessage = null
-                    )
-                }
+
+            onAutoVerified = { user ->
+                completeRegistration(user)
             },
-            onOtpRequestFailed = { exception ->
+
+            onOtpRequestFailed = { errorMessage ->
                 _uiState.update {
                     it.copy(
-                        isLoading = false,
-                        errorMessage = exception.message
-                            ?: "Unable to send OTP. Please try again."
+                        isLoading = false
                     )
                 }
             }
         )
     }
 
-    // STEP 3: Store OTP input
+    // ---------------------------------------------------------
+    // STEP 4: MANUAL OTP VERIFICATION
+    // ---------------------------------------------------------
+
     fun onOtpChanged(otp: String) {
         _uiState.update {
             it.copy(
-                otp = otp.filter(Char::isDigit).take(6),
+                otp = otp.filter { character -> character.isDigit() }
+                    .take(6),
                 errorMessage = null
             )
         }
     }
 
-    // STEP 4: Verify manually entered OTP
     fun onVerifyOtpClicked() {
         val currentState = _uiState.value
+
+        if (currentState.isLoading) return
+
         val verificationId = currentState.verificationId
 
         if (verificationId.isNullOrBlank()) {
@@ -246,64 +257,168 @@ class RegisterViewModel @Inject constructor(
 
         if (currentState.otp.length != 6) {
             _uiState.update {
-                it.copy(errorMessage = "Please enter a valid 6-digit OTP.")
+                it.copy(errorMessage = "Enter the 6-digit OTP.")
             }
             return
         }
 
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    errorMessage = null
-                )
-            }
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                errorMessage = null
+            )
+        }
 
+        viewModelScope.launch {
             try {
-                val result = authRepository.verifyPhoneOtp(
+                authRepository.verifyPhoneOtp(
                     verificationId = verificationId,
                     otp = currentState.otp
-                )
-
-                result.fold(
-                    onSuccess = {
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                isPhoneVerified = true,
-                                isRegistrationCompleted = true,
-                                errorMessage = null
-                            )
-                        }
-                    },
-                    onFailure = { exception ->
-                        _uiState.update {
-                            it.copy(
-                                isLoading = false,
-                                errorMessage = exception.message
-                                    ?: "OTP verification failed."
-                            )
-                        }
+                ).onSuccess { user ->
+                    completeRegistration(user)
+                }.onFailure { exception ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = exception.message
+                                ?: "OTP verification failed."
+                        )
                     }
-                )
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (exception: Exception) {
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = exception.message
-                            ?: "Something went wrong."
+                        errorMessage = e.message
+                            ?: "Unable to verify OTP."
                     )
                 }
             }
         }
     }
 
-    // STEP 5: Clear error
+    // ---------------------------------------------------------
+    // STEP 5: CREATE USER PROFILE
+    // ---------------------------------------------------------
+
+    private fun completeRegistration(user: QevinUser) {
+        if (isProfileCreationInProgress || isProfileCreationCompleted) {
+            return
+        }
+
+        pendingVerifiedUser = user
+        isProfileCreationInProgress = true
+
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                isPhoneVerified = true,
+                errorMessage = null
+            )
+        }
+
+        viewModelScope.launch {
+            try {
+                val currentState = _uiState.value
+
+                val profile = UserProfile(
+                    uid = user.id,
+                    displayName = user.displayName.ifBlank {
+                        currentState.displayName
+                    },
+                    username = null,
+                    email = user.email?.ifBlank {
+                        currentState.email
+                    },
+                    phoneNumber = user.phoneNumber?.ifBlank {
+                        currentState.phoneNumber
+                    },
+                    photoUrl = user.photoUrl,
+                    about = "",
+                    createdAt = null,
+                    updatedAt = null
+                )
+
+                // Avoid creating duplicate profiles on retry.
+                val existingProfileResult =
+                    profileRepository.getProfile(user.id)
+
+                existingProfileResult.onFailure { exception ->
+                    throw exception
+                }
+
+                val existingProfile = existingProfileResult.getOrNull()
+
+                if (existingProfile == null) {
+                    val createResult =
+                        profileRepository.createProfile(profile)
+
+                    createResult.onFailure { exception ->
+                        throw exception
+                    }
+                }
+
+                isProfileCreationCompleted = true
+                pendingVerifiedUser = null
+
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isPhoneVerified = true,
+                        isRegistrationCompleted = true,
+                        errorMessage = null
+                    )
+                }
+
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isPhoneVerified = true,
+                        isRegistrationCompleted = false,
+                        errorMessage = e.message
+                            ?: "Profile creation failed. Please try again."
+                    )
+                }
+            } finally {
+                isProfileCreationInProgress = false
+            }
+        }
+    }
+
+    // ---------------------------------------------------------
+    // STEP 6: RETRY PROFILE CREATION
+    // ---------------------------------------------------------
+
+    fun retryProfileCreation() {
+        val user = pendingVerifiedUser ?: return
+
+        if (isProfileCreationInProgress || isProfileCreationCompleted) {
+            return
+        }
+
+        completeRegistration(user)
+    }
+
+    // ---------------------------------------------------------
+    // UI STATE HELPERS
+    // ---------------------------------------------------------
+
     fun clearError() {
         _uiState.update {
             it.copy(errorMessage = null)
+        }
+    }
+
+    fun clearMessages() {
+        _uiState.update {
+            it.copy(
+                errorMessage = null
+            )
         }
     }
 }
