@@ -39,7 +39,8 @@ import com.example.qevin.core.designsystem.color.QevinColors
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Phone
 import android.net.Uri
-
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material3.TextButton
 
 @Composable
 fun ProfileContent(
@@ -51,7 +52,8 @@ fun ProfileContent(
     onBackClick: () -> Unit,
     onEditProfileClick: () -> Unit,
     profileImageUri: Uri? = null,
-    onChangePhotoClick: () -> Unit = {}
+    onChangePhotoClick: () -> Unit = {},
+    onRemovePhotoClick: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -109,6 +111,30 @@ fun ProfileContent(
                     imageUri = profileImageUri,
                     onClick = onChangePhotoClick
                 )
+
+                if (profileImageUri != null) {
+                    TextButton(
+                        onClick = onRemovePhotoClick
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Delete,
+                            contentDescription = "Remove profile photo",
+                            tint = QevinColors.TextSecondary
+                        )
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        Text(
+                            text = "Remove Photo",
+                            color = QevinColors.TextSecondary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
 
                 Spacer(modifier = Modifier.height(14.dp))
 

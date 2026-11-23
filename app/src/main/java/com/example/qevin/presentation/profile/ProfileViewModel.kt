@@ -14,11 +14,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import android.net.Uri
 import javax.inject.Inject
+import com.example.qevin.domain.repository.ProfileImageRepository
+import java.io.File
+
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val profileImageRepository: ProfileImageRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -28,6 +32,7 @@ class ProfileViewModel @Inject constructor(
 
     init {
         loadProfile()
+        loadSavedProfileImage()
     }
 
     // --------------------------------------------------
@@ -396,14 +401,89 @@ class ProfileViewModel @Inject constructor(
     }
 
     // --------------------------------------------------
-// PROFILE PHOTO - LOCAL IMAGE SELECTION
-// --------------------------------------------------
+    // PROFILE PHOTO - LOCAL IMAGE SELECTION
+    // --------------------------------------------------
 
     fun onProfileImageSelected(uri: Uri) {
+        // Show the selected image immediately.
         _uiState.update {
-            it.copy(
-                selectedProfileImageUri = uri
-            )
+            it.copy(selectedProfileImageUri = uri)
+        }
+
+        viewModelScope.launch {
+            try {
+                val savedPath = profileImageRepository
+                    .saveProfileImage(uri)
+
+                _uiState.update {
+                    it.copy(
+                        selectedProfileImageUri =
+                            Uri.fromFile(File(savedPath))
+                    )
+                }
+
+            } catch (exception: Exception) {
+                if (exception is kotlinx.coroutines.CancellationException) {
+                    throw exception
+                }
+
+                // Keep the selected preview visible.
+                // We will improve storage error handling
+                // in the testing stage.
+            }
         }
     }
+
+    //---------------
+    private fun loadSavedProfileImage() {
+        viewModelScope.launch {
+            try {
+                val savedPath = profileImageRepository
+                    .getSavedProfileImagePath()
+
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        selectedProfileImageUri = savedPath?.let {
+                            Uri.fromFile(File(it))
+                        }
+                    )
+                }
+
+            } catch (exception: Exception) {
+                if (exception is kotlinx.coroutines.CancellationException) {
+                    throw exception
+                }
+            }
+        }
+    }
+
+    //---------------
+
+
+    fun onRemoveProfileImage() {
+        viewModelScope.launch {
+            try {
+                profileImageRepository.removeProfileImage()
+
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        selectedProfileImageUri = null
+                    )
+                }
+
+            } catch (exception: Exception) {
+
+                if (exception is kotlinx.coroutines.CancellationException) {
+                    throw exception
+                }
+
+                android.util.Log.e(
+                    "ProfileViewModel",
+                    "Failed to remove profile image",
+                    exception
+                )
+            }
+        }
+    }
+
 }

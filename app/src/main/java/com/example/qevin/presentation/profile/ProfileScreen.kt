@@ -53,6 +53,8 @@ fun ProfileScreen(
         }
     }
 
+
+
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
             snackbarHostState.showSnackbar("Profile updated successfully.")
@@ -116,7 +118,8 @@ fun ProfileScreen(
                                     ActivityResultContracts.PickVisualMedia.ImageOnly
                                 )
                             )
-                        }
+                        },
+                        onRemovePhotoClick = viewModel::onRemoveProfileImage
                     )
                 }
             }
