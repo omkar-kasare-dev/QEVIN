@@ -320,9 +320,9 @@ The following section will showcase the actual application screens as developmen
 | Onboarding    | Implemented |
 | Login         | Implemented |
 | Registration  | Implemented |
-| Home / Chats  | Coming Soon |
+| Home / Chats  | Implemented/Coming Soon |
 | Conversation  | Coming Soon |
-| User Profile  | Coming Soon |
+| User Profile  | Implemented |
 | Settings      | Coming Soon |
 
 Add actual screenshots inside `docs/images/screenshots/` and update this section with their image paths.
@@ -341,10 +341,10 @@ QEVIN is being developed incrementally, with a focus on building a stable founda
 - [x] Complete reusable UI components.
 - [x] Onboarding screens.
 - [x] Login and registration.
-- [ ] Main messaging dashboard.
-- [ ] User profile and settings.
-- [ ] Backend integration.
-- [ ] User authentication.
+- [x] Main messaging dashboard.
+- [x] User profile and settings.
+- [x] Backend integration.
+- [x] User authentication.
 - [ ] Real-time personal messaging.
 - [ ] Media sharing.
 - [ ] Push notifications.
