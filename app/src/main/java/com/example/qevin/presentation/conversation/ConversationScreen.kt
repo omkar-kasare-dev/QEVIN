@@ -64,6 +64,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.qevin.core.designsystem.color.QevinColors
 
+// Temparory
+import androidx.compose.runtime.LaunchedEffect // already imported
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+
 private data class ChatMessage(
     val id: Int,
     val text: String,
@@ -78,9 +84,17 @@ fun ConversationScreen(
     onBackClick: () -> Unit = {},
     onVoiceCallClick: () -> Unit = {},
     onVideoCallClick: () -> Unit = {},
-    onMoreClick: () -> Unit = {}
+    onMoreClick: () -> Unit = {},
+    viewModel: ConversationViewModel = hiltViewModel()
 ) {
     val contactName = getContactName(conversationId)
+
+    val context = LocalContext.current
+    LaunchedEffect(viewModel) {
+        viewModel.errors.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+        }
+    }
 
     val messages = remember(conversationId) {
         mutableStateListOf(
@@ -165,6 +179,8 @@ fun ConversationScreen(
                                     isRead = false
                                 )
                             )
+                            // Temp
+                            viewModel.sendMessage(trimmedMessage)
                             messageText = ""
                         }
                     }

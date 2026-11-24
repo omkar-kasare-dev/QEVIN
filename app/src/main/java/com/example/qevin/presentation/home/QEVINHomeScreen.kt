@@ -64,6 +64,12 @@ import androidx.compose.ui.unit.sp
 import com.example.qevin.R
 import com.example.qevin.core.designsystem.color.QevinColors
 
+//Temporary imports
+import android.util.Log
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+
 private enum class HomeTab(val label: String) {
     CHATS("Chats"),
     GROUPS("Groups"),
@@ -148,8 +154,29 @@ fun QEVINHomeScreen(
     onNewChatClick: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
-    onBottomTabClick: (String) -> Unit = {}
+    onBottomTabClick: (String) -> Unit = {},
+    viewModel: HomeViewModel = hiltViewModel()
 ) {
+
+    // TEMPORARY (Phase 2, Step 4): verify real data. Removed in Step 9.
+    val uiState by viewModel.uiState.collectAsState()
+    LaunchedEffect(uiState) {
+        Log.d(
+            "QEVIN_HOME",
+            "loading=${uiState.isLoading} uid=${uiState.currentUid?.take(6)} " +
+                    "count=${uiState.conversations.size} offline=${uiState.isOffline} " +
+                    "error=${uiState.errorMessage}"
+        )
+        uiState.conversations.forEach { c ->
+            Log.d(
+                "QEVIN_HOME",
+                "  ${c.id.take(12)}… title='${c.title}' time='${c.timeLabel}' " +
+                        "preview='${c.preview}' unread=${c.unreadCount} badge='${c.unreadLabel}'"
+            )
+        }
+    }
+
+    //--------------------------
     var selectedHomeTab by remember { mutableStateOf(HomeTab.CHATS) }
     var selectedBottomTab by remember { mutableStateOf(BottomTab.CHATS) }
 

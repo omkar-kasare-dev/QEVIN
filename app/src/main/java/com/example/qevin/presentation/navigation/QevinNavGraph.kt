@@ -25,6 +25,7 @@ import com.example.qevin.feature.auth.register.RegisterViewModel
 import com.example.qevin.presentation.calls.CallsScreen
 import com.example.qevin.presentation.conversation.ConversationScreen
 import com.example.qevin.presentation.conversation.NewConversationScreen
+import com.example.qevin.presentation.debug.DebugOpenChatScreen
 import com.example.qevin.presentation.home.QEVINHomeScreen
 import com.example.qevin.presentation.onboarding.OnboardingScreen
 import com.example.qevin.presentation.people.PeopleScreen
@@ -243,8 +244,9 @@ fun QevinNavGraph(
                 onBackClick = {
                     navController.popBackStack()
                 },
+                // Temporary Implementation
                 onNewGroupClick = {
-                    // Handle new group creation navigation
+                    navController.navigate(AppRoute.DebugOpenChat) // TEMPORARY
                 },
                 onContactSelected = { contactId ->
                     navController.navigate(AppRoute.conversation(contactId)) {
@@ -255,6 +257,21 @@ fun QevinNavGraph(
                 }
             )
         }
+
+        // Temporary Composable for testing.
+        // TEMPORARY debug entry. Delete after Phase 5.
+        composable(AppRoute.DebugOpenChat) {
+            DebugOpenChatScreen(
+                onBackClick = { navController.popBackStack() },
+                onOpenChat = { conversationId ->
+                    navController.navigate(AppRoute.conversation(conversationId)) {
+                        popUpTo(AppRoute.DebugOpenChat) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        //-------------
 
         // 9. Conversation
         composable(

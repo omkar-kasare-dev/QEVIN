@@ -53,6 +53,8 @@ object AppRoute {
     const val Privacy = "privacy"
     const val Search = "search"
 
+    const val DebugOpenChat = "debug_open_chat"
+
     // Dynamic route builders
     fun conversation(conversationId: String): String {
         return "conversation/${android.net.Uri.encode(conversationId)}"

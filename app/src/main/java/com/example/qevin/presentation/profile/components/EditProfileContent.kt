@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -304,7 +305,16 @@ private fun EditProfileField(
             isError = error != null,
             singleLine = singleLine,
             minLines = if (singleLine) 1 else 3,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth()
+                .then(
+                    if (error != null) {
+                        Modifier.semantics {
+                            error(error)
+                        }
+                    } else {
+                        Modifier
+                    }
+                ),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = Color.White,

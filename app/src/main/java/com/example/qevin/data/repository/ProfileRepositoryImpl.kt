@@ -1,6 +1,7 @@
 package com.example.qevin.data.repository
 
 import com.example.qevin.data.remote.FirestoreProfileDataSource
+import com.example.qevin.domain.model.ParticipantProfile
 import com.example.qevin.domain.model.UserProfile
 import com.example.qevin.domain.repository.ProfileRepository
 import javax.inject.Inject
@@ -58,5 +59,11 @@ class ProfileRepositoryImpl @Inject constructor(
         } catch (exception: Exception) {
             Result.failure(exception)
         }
+    }
+    //-----------------
+    override suspend fun getParticipantProfiles(
+        uids: Collection<String>
+    ): Result<List<ParticipantProfile>> = safeResult {
+        dataSource.getParticipantProfiles(uids)
     }
 }

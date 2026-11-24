@@ -39,6 +39,7 @@ import com.example.qevin.core.designsystem.color.QevinColors
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Phone
 import android.net.Uri
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.TextButton
 
@@ -74,7 +75,7 @@ fun ProfileContent(
                 ) {
                     IconButton(
                         onClick = onBackClick,
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.ArrowBack,
@@ -114,7 +115,8 @@ fun ProfileContent(
 
                 if (profileImageUri != null) {
                     TextButton(
-                        onClick = onRemovePhotoClick
+                        onClick = onRemovePhotoClick,
+                        modifier = Modifier.heightIn(min = 48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Delete,
@@ -133,10 +135,7 @@ fun ProfileContent(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // DISPLAY NAME
                 Text(

@@ -1,6 +1,7 @@
 package com.example.qevin.data.remote
 
 import com.example.qevin.data.remote.model.UserProfileDocument
+import com.example.qevin.domain.model.ParticipantProfile
 import com.example.qevin.domain.model.UserProfile
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
@@ -11,6 +12,8 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.google.firebase.firestore.FieldPath
+
 
 @Singleton
 class FirestoreProfileDataSource @Inject constructor(
@@ -243,5 +246,32 @@ class FirestoreProfileDataSource @Inject constructor(
             ?.trim()
             ?.lowercase(Locale.ROOT)
             ?.takeIf { it.isNotBlank() }
+    }
+
+    //------------------------
+
+    // Batched lookup for conversation rows. whereIn accepts at most 30 values.
+    suspend fun getParticipantProfiles(uids: Collection<String>): List<ParticipantProfile> {
+        val distinct = uids.filter { it.isNotBlank() }.distinct()
+
+        return distinct.chunked(30).flatMap { chunk ->
+            usersCollection
+                .whereIn(FieldPath.documentId(), chunk)
+                .get()
+                .await()
+                .documents
+                .mapNotNull { doc ->
+                    val profile = doc.toObject(UserProfileDocument::class.java)
+                        ?: return@mapNotNull null
+                    ParticipantProfile(
+                        uid = doc.id,
+                        displayName = profile.displayName,
+                        username = profile.username,
+                        photoUrl = profile.photoUrl?.takeIf {
+                            it.startsWith("http://") || it.startsWith("https://")
+                        }
+                    )
+                }
+        }
     }
 }

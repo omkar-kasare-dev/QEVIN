@@ -1,5 +1,6 @@
 package com.example.qevin.domain.repository
 
+import com.example.qevin.domain.model.ParticipantProfile
 import com.example.qevin.domain.model.UserProfile
 import kotlinx.coroutines.flow.Flow
 
@@ -25,4 +26,7 @@ interface ProfileRepository {
         username: String,
         currentUid: String
     ): Result<Boolean>
+
+    //----------
+    suspend fun getParticipantProfiles(uids: Collection<String>): Result<List<ParticipantProfile>>
 }

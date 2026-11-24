@@ -262,7 +262,7 @@ class ProfileViewModel @Inject constructor(
                     saveSuccess = false
                 )
             }
-
+            try {
             // Check username availability only
             // when the username has actually changed.
             val usernameChanged = !username.equals(
@@ -335,6 +335,18 @@ class ProfileViewModel @Inject constructor(
                     }
                 }
             )
+
+            } catch (exception: kotlinx.coroutines.CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSaving = false,
+                        errorMessage = exception.localizedMessage
+                            ?: "Something went wrong while updating your profile."
+                    )
+                }
+            }
         }
     }
 

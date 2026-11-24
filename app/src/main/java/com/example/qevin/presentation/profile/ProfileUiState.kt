@@ -11,6 +11,7 @@ data class ProfileUiState(
 
     // Profile Photo - Local Preview
     val selectedProfileImageUri: Uri? = null,
+    val profileImageErrorMessage: String? = null,
 
     // Edit Profile
     val isEditing: Boolean = false,
