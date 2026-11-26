@@ -9,6 +9,9 @@ import com.example.qevin.domain.model.UserProfile
 import com.example.qevin.domain.repository.AuthRepository
 import com.example.qevin.domain.repository.ProfileRepository
 import com.example.qevin.domain.usecase.ValidateRegistrationInputUseCase
+import com.google.firebase.FirebaseTooManyRequestsException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -217,10 +220,14 @@ class RegisterViewModel @Inject constructor(
                 completeRegistration(user)
             },
 
-            onOtpRequestFailed = { errorMessage ->
+            onOtpRequestFailed = { exception ->
                 _uiState.update {
                     it.copy(
-                        isLoading = false
+                        isLoading = false,
+                        errorMessage = exception.toRegistrationMessage(
+                            invalidCredentialMessage = "Enter a valid mobile number.",
+                            fallback = "Couldn't send the OTP. Please try again."
+                        )
                     )
                 }
             }
@@ -280,8 +287,10 @@ class RegisterViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = exception.message
-                                ?: "OTP verification failed."
+                            errorMessage = exception.toRegistrationMessage(
+                                invalidCredentialMessage = "Incorrect or expired OTP.",
+                                fallback = "OTP verification failed."
+                            )
                         )
                     }
                 }
@@ -329,12 +338,11 @@ class RegisterViewModel @Inject constructor(
                         currentState.displayName
                     },
                     username = null,
-                    email = user.email?.ifBlank {
-                        currentState.email
-                    },
-                    phoneNumber = user.phoneNumber?.ifBlank {
-                        currentState.phoneNumber
-                    },
+                    // A null value from Firebase must fall back too, not only a blank one.
+                    email = user.email?.takeIf { it.isNotBlank() }
+                        ?: currentState.email,
+                    phoneNumber = user.phoneNumber?.takeIf { it.isNotBlank() }
+                        ?: currentState.phoneNumber,
                     photoUrl = user.photoUrl,
                     about = "",
                     createdAt = null,
@@ -420,5 +428,23 @@ class RegisterViewModel @Inject constructor(
                 errorMessage = null
             )
         }
+    }
+
+    // ---------------------------------------------------------
+    // ERROR MESSAGES
+    // ---------------------------------------------------------
+
+    // The same Firebase exception type means "bad phone number" when requesting
+    // an OTP and "wrong code" when verifying, so the caller supplies the meaning.
+    private fun Throwable.toRegistrationMessage(
+        invalidCredentialMessage: String,
+        fallback: String
+    ): String = when (this) {
+        is FirebaseAuthInvalidCredentialsException -> invalidCredentialMessage
+        is FirebaseAuthUserCollisionException ->
+            "This phone number is already linked to another account."
+        is FirebaseTooManyRequestsException ->
+            "Too many attempts. Please try again later."
+        else -> message ?: fallback
     }
 }

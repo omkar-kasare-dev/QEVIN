@@ -52,6 +52,11 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
+    // Process-level foreground/background detection (presence, Step 8)
+    implementation("androidx.lifecycle:lifecycle-process:${libs.versions.lifecycle.get()}")
+    // collectAsStateWithLifecycle (Home UI, Step 9)
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:${libs.versions.lifecycle.get()}")
+
     implementation("androidx.compose.material:material-icons-extended")
 
     //implementation(platform("com.google.firebase:firebase-bom:35.2.0"))
@@ -62,6 +67,9 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     // Cloud Firestore
     implementation("com.google.firebase:firebase-firestore")
+
+    // Realtime Database (presence only; Spark plan, 100 connection cap)
+    implementation("com.google.firebase:firebase-database")
 
     // Navigation
     implementation(libs.androidx.navigation.compose)

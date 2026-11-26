@@ -10,6 +10,11 @@ interface ProfileRepository {
         profile: UserProfile
     ): Result<Unit>
 
+
+    suspend fun ensureProfile(
+        profile: UserProfile
+    ): Result<Boolean>
+
     suspend fun getProfile(
         uid: String
     ): Result<UserProfile?>

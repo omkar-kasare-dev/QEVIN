@@ -30,6 +30,12 @@ data class ProfileUiState(
 
     // Unsaved changes
     val hasUnsavedChanges: Boolean = false,
-    val showDiscardChangesDialog: Boolean = false
+    val showDiscardChangesDialog: Boolean = false,
+
+    // Logout
+    val showLogoutDialog: Boolean = false,
+    val isLoggingOut: Boolean = false,
+    val isLoggedOut: Boolean = false,
+    val logoutErrorMessage: String? = null
 )
 

@@ -323,7 +323,6 @@ fun QevinNavGraph(
         }
 
         // 12. Profile
-        // 12. Profile
         composable(AppRoute.Profile) {
 
             ProfileScreen(
@@ -332,6 +331,21 @@ fun QevinNavGraph(
                 },
                 onEditProfileClick = {
                     // Edit Profile implementation: Phase 1, Step 5
+                },
+                onLoggedOut = {
+                    Log.d(
+                        "QEVIN_NAVIGATION",
+                        "Logged out. Clearing back stack and opening Login."
+                    )
+
+                    // Clear the ENTIRE back stack (not just Home), so Back from
+                    // Login can never return to a signed-in screen.
+                    navController.navigate(AppRoute.Login) {
+                        popUpTo(navController.graph.id) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
                 }
             )
         }

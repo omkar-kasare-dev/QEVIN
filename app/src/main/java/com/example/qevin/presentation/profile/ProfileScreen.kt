@@ -39,6 +39,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 fun ProfileScreen(
     onBackClick: () -> Unit,
     onEditProfileClick: () -> Unit,
+    onLoggedOut: () -> Unit = {},
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -53,12 +54,23 @@ fun ProfileScreen(
         }
     }
 
-
-
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
             snackbarHostState.showSnackbar("Profile updated successfully.")
             viewModel.clearSaveSuccess()
+        }
+    }
+
+    LaunchedEffect(uiState.logoutErrorMessage) {
+        uiState.logoutErrorMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            viewModel.clearLogoutError()
+        }
+    }
+
+    LaunchedEffect(uiState.isLoggedOut) {
+        if (uiState.isLoggedOut) {
+            onLoggedOut()
         }
     }
 
@@ -119,7 +131,12 @@ fun ProfileScreen(
                                 )
                             )
                         },
-                        onRemovePhotoClick = viewModel::onRemoveProfileImage
+                        onRemovePhotoClick = viewModel::onRemoveProfileImage,
+                        isLoggingOut = uiState.isLoggingOut,
+                        showLogoutDialog = uiState.showLogoutDialog,
+                        onLogoutClick = viewModel::onLogoutClick,
+                        onConfirmLogout = viewModel::confirmLogout,
+                        onDismissLogout = viewModel::dismissLogoutDialog
                     )
                 }
             }

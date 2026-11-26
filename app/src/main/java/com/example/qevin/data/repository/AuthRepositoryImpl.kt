@@ -5,6 +5,7 @@ import android.app.Activity
 import com.example.qevin.data.remote.FirebaseAuthDataSource
 import com.example.qevin.domain.model.QevinUser
 import com.example.qevin.domain.repository.AuthRepository
+import com.example.qevin.domain.repository.PresenceRepository
 import com.google.firebase.auth.FirebaseUser
 import dagger.hilt.android.scopes.ViewModelScoped
 import javax.inject.Inject
@@ -13,7 +14,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class AuthRepositoryImpl @Inject constructor(
-    private val authDataSource: FirebaseAuthDataSource
+    private val authDataSource: FirebaseAuthDataSource,
+    private val presenceRepository: PresenceRepository
 ) : AuthRepository {
 
     // Observe current authenticated user
@@ -78,6 +80,9 @@ class AuthRepositoryImpl @Inject constructor(
 
     // Logout
     override suspend fun logout(): Result<Unit> = safeResult {
+        // Must happen BEFORE sign-out: the database rules need a signed-in user.
+        // Best-effort and time-bounded, never throws.
+        presenceRepository.markOffline()
         authDataSource.signOut()
     }
 

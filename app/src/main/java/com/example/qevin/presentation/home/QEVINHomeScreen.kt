@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,6 +28,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.CloudOff
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.PeopleOutline
 import androidx.compose.material.icons.outlined.Person
@@ -37,6 +40,9 @@ import androidx.compose.material.icons.rounded.ChatBubble
 import androidx.compose.material.icons.rounded.People
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -48,6 +54,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,17 +65,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.example.qevin.R
 import com.example.qevin.core.designsystem.color.QevinColors
-
-//Temporary imports
-import android.util.Log
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 private enum class HomeTab(val label: String) {
     CHATS("Chats"),
@@ -87,66 +92,17 @@ private enum class BottomTab(
     SETTINGS("Settings", Icons.Rounded.Settings, Icons.Outlined.Settings)
 }
 
-private data class ConversationPreview(
-    val id: String,
-    val name: String,
-    val message: String,
-    val time: String,
-    val initials: String,
-    val avatarColor: Color,
-    val unreadCount: Int = 0,
-    val isOnline: Boolean = false,
-    val isGroup: Boolean = false,
-    val isCall: Boolean = false
+private val AvatarPalette = listOf(
+    Color(0xFFB58B64),
+    Color(0xFFB56F87),
+    Color(0xFF5146BD),
+    Color(0xFF9B684A),
+    Color(0xFF438A9C)
 )
 
-private val sampleConversations = listOf(
-    ConversationPreview(
-        id = "rahul",
-        name = "Rahul Sharma",
-        message = "Hey! How are you?",
-        time = "9:32 PM",
-        initials = "RS",
-        avatarColor = Color(0xFFB58B64),
-        unreadCount = 2,
-        isOnline = true
-    ),
-    ConversationPreview(
-        id = "priya",
-        name = "Priya Deshmukh",
-        message = "See you tomorrow!",
-        time = "8:15 PM",
-        initials = "PD",
-        avatarColor = Color(0xFFB56F87),
-        unreadCount = 1
-    ),
-    ConversationPreview(
-        id = "dev-team",
-        name = "Dev Team",
-        message = "Project updated",
-        time = "7:40 PM",
-        initials = "DT",
-        avatarColor = Color(0xFF5146BD),
-        isGroup = true
-    ),
-    ConversationPreview(
-        id = "family",
-        name = "Family Group",
-        message = "Good night ❤️",
-        time = "Yesterday",
-        initials = "FG",
-        avatarColor = Color(0xFF9B684A),
-        isGroup = true
-    ),
-    ConversationPreview(
-        id = "aman",
-        name = "Aman Patil",
-        message = "Thanks!",
-        time = "Mon",
-        initials = "AP",
-        avatarColor = Color(0xFF438A9C)
-    )
-)
+// Stable per person: the same seed always gives the same color.
+private fun avatarColorFor(seed: String): Color =
+    AvatarPalette[(seed.hashCode() and 0x7FFFFFFF) % AvatarPalette.size]
 
 @Composable
 fun QEVINHomeScreen(
@@ -157,36 +113,24 @@ fun QEVINHomeScreen(
     onBottomTabClick: (String) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // TEMPORARY (Phase 2, Step 4): verify real data. Removed in Step 9.
-    val uiState by viewModel.uiState.collectAsState()
-    LaunchedEffect(uiState) {
-        Log.d(
-            "QEVIN_HOME",
-            "loading=${uiState.isLoading} uid=${uiState.currentUid?.take(6)} " +
-                    "count=${uiState.conversations.size} offline=${uiState.isOffline} " +
-                    "error=${uiState.errorMessage}"
-        )
-        uiState.conversations.forEach { c ->
-            Log.d(
-                "QEVIN_HOME",
-                "  ${c.id.take(12)}… title='${c.title}' time='${c.timeLabel}' " +
-                        "preview='${c.preview}' unread=${c.unreadCount} badge='${c.unreadLabel}'"
-            )
-        }
-    }
-
-    //--------------------------
-    var selectedHomeTab by remember { mutableStateOf(HomeTab.CHATS) }
+    // Saved so returning from a conversation keeps the tab you were on.
+    var selectedHomeTab by rememberSaveable { mutableStateOf(HomeTab.CHATS) }
+    // Not saved on purpose: Home is always the "Chats" bottom tab when it is shown.
     var selectedBottomTab by remember { mutableStateOf(BottomTab.CHATS) }
 
-    val visibleConversations = remember(selectedHomeTab) {
+    val visibleConversations = remember(selectedHomeTab, uiState.conversations) {
         when (selectedHomeTab) {
-            HomeTab.CHATS -> sampleConversations.filter { !it.isGroup }
-            HomeTab.GROUPS -> sampleConversations.filter { it.isGroup }
-            HomeTab.CALLS -> sampleConversations.filter { it.isCall }
+            HomeTab.CHATS -> uiState.conversations.filter { !it.isGroup }
+            HomeTab.GROUPS -> uiState.conversations.filter { it.isGroup }
+            HomeTab.CALLS -> emptyList() // Phase 7
         }
     }
+
+    // The Calls tab has no data source yet, so loading/error/offline
+    // states only apply to Chats and Groups.
+    val isConversationTab = selectedHomeTab != HomeTab.CALLS
 
     Box(
         modifier = Modifier
@@ -261,10 +205,30 @@ fun QEVINHomeScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                if (visibleConversations.isEmpty()) {
-                    EmptyConversationState(selectedTab = selectedHomeTab)
-                } else {
-                    LazyColumn(
+                if (isConversationTab && uiState.isOffline && uiState.conversations.isNotEmpty()) {
+                    OfflineBanner()
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                when {
+                    // Brief moment after logout, before navigation leaves Home.
+                    uiState.isSignedOut -> Box(modifier = Modifier.fillMaxSize())
+
+                    isConversationTab && uiState.isLoading -> LoadingState()
+
+                    isConversationTab && uiState.errorMessage != null -> ErrorState(
+                        message = uiState.errorMessage.orEmpty(),
+                        onRetryClick = viewModel::retry
+                    )
+
+                    visibleConversations.isEmpty() -> EmptyConversationState(
+                        selectedTab = selectedHomeTab,
+                        showOfflineHint = isConversationTab &&
+                                uiState.isOffline &&
+                                uiState.conversations.isEmpty()
+                    )
+
+                    else -> LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
                             start = 14.dp,
@@ -307,7 +271,6 @@ private fun QevinHomeHeader(
             ),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Replace R.drawable.ic_qevin_logo with your actual drawable resource name
         Image(
             painter = painterResource(id = R.drawable.qevin_logo),
             contentDescription = "QEVIN Logo",
@@ -408,9 +371,11 @@ private fun HomeCategoryTabs(
 
 @Composable
 private fun ConversationListItem(
-    conversation: ConversationPreview,
+    conversation: ConversationUiModel,
     onClick: () -> Unit
 ) {
+    val hasUnread = conversation.unreadCount > 0
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -419,52 +384,13 @@ private fun ConversationListItem(
             .padding(horizontal = 6.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Compact Avatar
-        Box(
-            modifier = Modifier.size(42.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                conversation.avatarColor,
-                                conversation.avatarColor.copy(alpha = 0.7f)
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = conversation.initials,
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            if (conversation.isOnline) {
-                Box(
-                    modifier = Modifier
-                        .size(11.dp)
-                        .align(Alignment.BottomEnd)
-                        .clip(CircleShape)
-                        .background(QevinColors.Background)
-                        .padding(1.5.dp)
-                        .clip(CircleShape)
-                        .background(QevinColors.Success)
-                )
-            }
-        }
+        ConversationAvatar(conversation = conversation)
 
         Spacer(modifier = Modifier.width(11.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = conversation.name,
+                text = conversation.title,
                 color = QevinColors.TextPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -475,18 +401,14 @@ private fun ConversationListItem(
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                text = conversation.message,
-                color = if (conversation.unreadCount > 0) {
+                text = conversation.preview,
+                color = if (hasUnread) {
                     QevinColors.TextPrimary.copy(alpha = 0.85f)
                 } else {
                     QevinColors.TextSecondary
                 },
                 fontSize = 12.sp,
-                fontWeight = if (conversation.unreadCount > 0) {
-                    FontWeight.Medium
-                } else {
-                    FontWeight.Normal
-                },
+                fontWeight = if (hasUnread) FontWeight.Medium else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -499,40 +421,97 @@ private fun ConversationListItem(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = conversation.time,
-                color = if (conversation.unreadCount > 0) {
-                    QevinColors.Lavender
-                } else {
-                    QevinColors.TextSecondary
-                },
+                text = conversation.timeLabel,
+                color = if (hasUnread) QevinColors.Lavender else QevinColors.TextSecondary,
                 fontSize = 10.sp,
-                fontWeight = if (conversation.unreadCount > 0) {
-                    FontWeight.Medium
-                } else {
-                    FontWeight.Normal
-                }
+                fontWeight = if (hasUnread) FontWeight.Medium else FontWeight.Normal,
+                maxLines = 1
             )
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            if (conversation.unreadCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(QevinColors.PurpleGlow),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = conversation.unreadCount.toString(),
-                        color = QevinColors.Background,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+            if (hasUnread) {
+                UnreadBadge(label = conversation.unreadLabel)
             } else {
                 Spacer(modifier = Modifier.height(16.dp))
             }
+        }
+    }
+}
+
+/**
+ * Circle for one digit, pill for "12" or "99+". A fixed 16dp square would clip
+ * the text, so the badge has a minimum size and grows with its content.
+ */
+@Composable
+private fun UnreadBadge(label: String) {
+    Box(
+        modifier = Modifier
+            .defaultMinSize(minWidth = 16.dp, minHeight = 16.dp)
+            .clip(CircleShape)
+            .background(QevinColors.PurpleGlow)
+            .padding(horizontal = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            color = QevinColors.Background,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun ConversationAvatar(conversation: ConversationUiModel) {
+    val baseColor = avatarColorFor(conversation.otherUid ?: conversation.id)
+
+    Box(
+        modifier = Modifier.size(42.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape)
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(baseColor, baseColor.copy(alpha = 0.7f))
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Always drawn. A photo, once loaded, covers it; a missing or
+            // failed photo simply leaves the initials showing.
+            Text(
+                text = conversation.initials,
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            if (!conversation.photoUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = conversation.photoUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+
+        if (conversation.isOnline) {
+            Box(
+                modifier = Modifier
+                    .size(11.dp)
+                    .align(Alignment.BottomEnd)
+                    .clip(CircleShape)
+                    .background(QevinColors.Background)
+                    .padding(1.5.dp)
+                    .clip(CircleShape)
+                    .background(QevinColors.Success)
+            )
         }
     }
 }
@@ -606,13 +585,108 @@ private fun QevinBottomNavigation(
 }
 
 @Composable
+private fun LoadingState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(color = QevinColors.Lavender)
+    }
+}
+
+@Composable
+private fun OfflineBanner() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(QevinColors.Warning.copy(alpha = 0.12f))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.CloudOff,
+            contentDescription = null,
+            tint = QevinColors.Warning,
+            modifier = Modifier.size(16.dp)
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Text(
+            text = "You're offline. Showing saved conversations.",
+            color = QevinColors.Warning,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun ErrorState(
+    message: String,
+    onRetryClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(QevinColors.ElevatedSurface),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.ErrorOutline,
+                    contentDescription = null,
+                    tint = QevinColors.Error,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = message,
+                color = QevinColors.TextSecondary,
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Button(
+                onClick = onRetryClick,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = QevinColors.Primary)
+            ) {
+                Text(text = "Try Again", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
 private fun EmptyConversationState(
-    selectedTab: HomeTab
+    selectedTab: HomeTab,
+    showOfflineHint: Boolean
 ) {
     val (icon, title) = when (selectedTab) {
         HomeTab.CHATS -> Icons.Outlined.ChatBubbleOutline to "No conversations yet"
         HomeTab.GROUPS -> Icons.Outlined.Groups to "No groups yet"
         HomeTab.CALLS -> Icons.Outlined.Call to "No calls yet"
+    }
+
+    val subtitle = if (showOfflineHint) {
+        "Connect to the internet to load your chats."
+    } else {
+        "Your next connection starts here."
     }
 
     Box(
@@ -649,9 +723,10 @@ private fun EmptyConversationState(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Your next connection starts here.",
+                text = subtitle,
                 color = QevinColors.TextSecondary,
-                fontSize = 12.sp
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center
             )
         }
     }

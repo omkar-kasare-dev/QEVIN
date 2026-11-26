@@ -15,7 +15,6 @@ data class ConversationUiModel(
     val unreadCount: Int,
     val unreadLabel: String,
     val isGroup: Boolean,
-    // Filled in by Step 8.
     val isOnline: Boolean = false,
     val otherUid: String? = null
 )
@@ -25,7 +24,9 @@ object ConversationUiMapper {
     fun map(
         conversation: Conversation,
         currentUid: String,
-        profiles: Map<String, ParticipantProfile>
+        profiles: Map<String, ParticipantProfile>,
+        // uid -> isOnline. A uid missing from the map is treated as offline.
+        presence: Map<String, Boolean> = emptyMap()
     ): ConversationUiModel {
 
         val isGroup = conversation.type == ConversationType.GROUP
@@ -58,6 +59,7 @@ object ConversationUiMapper {
             unreadCount = unread,
             unreadLabel = ConversationTimeFormatter.unreadBadge(unread),
             isGroup = isGroup,
+            isOnline = !isGroup && otherUid != null && presence[otherUid] == true,
             otherUid = if (isGroup) null else otherUid
         )
     }

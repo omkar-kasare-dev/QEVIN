@@ -2,6 +2,7 @@ package com.example.qevin.presentation.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.qevin.domain.repository.AuthRepository
 import com.example.qevin.domain.repository.ProfileRepository
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,7 +23,8 @@ import java.io.File
 class ProfileViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val firebaseAuth: FirebaseAuth,
-    private val profileImageRepository: ProfileImageRepository
+    private val profileImageRepository: ProfileImageRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -263,78 +265,78 @@ class ProfileViewModel @Inject constructor(
                 )
             }
             try {
-            // Check username availability only
-            // when the username has actually changed.
-            val usernameChanged = !username.equals(
-                existingProfile.username.orEmpty().trim(),
-                ignoreCase = true
-            )
+                // Check username availability only
+                // when the username has actually changed.
+                val usernameChanged = !username.equals(
+                    existingProfile.username.orEmpty().trim(),
+                    ignoreCase = true
+                )
 
-            if (usernameChanged) {
+                if (usernameChanged) {
 
-                val availabilityResult =
-                    profileRepository.isUsernameAvailable(
-                        username = username,
-                        currentUid = uid
-                    )
-
-                if (availabilityResult.isFailure) {
-                    _uiState.update {
-                        it.copy(
-                            isSaving = false,
-                            errorMessage = availabilityResult.exceptionOrNull()
-                                ?.localizedMessage
-                                ?: "Unable to verify username availability."
+                    val availabilityResult =
+                        profileRepository.isUsernameAvailable(
+                            username = username,
+                            currentUid = uid
                         )
+
+                    if (availabilityResult.isFailure) {
+                        _uiState.update {
+                            it.copy(
+                                isSaving = false,
+                                errorMessage = availabilityResult.exceptionOrNull()
+                                    ?.localizedMessage
+                                    ?: "Unable to verify username availability."
+                            )
+                        }
+                        return@launch
                     }
-                    return@launch
-                }
 
-                if (availabilityResult.getOrNull() != true) {
-                    _uiState.update {
-                        it.copy(
-                            isSaving = false,
-                            usernameError = "This username is already taken."
-                        )
-                    }
-                    return@launch
-                }
-            }
-
-            val updatedProfile = existingProfile.copy(
-                displayName = displayName,
-                username = username,
-                about = about,
-                updatedAt = System.currentTimeMillis()
-            )
-
-            val updateResult =
-                profileRepository.updateProfile(updatedProfile)
-
-            updateResult.fold(
-                onSuccess = {
-                    _uiState.update {
-                        it.copy(
-                            profile = updatedProfile,
-                            isEditing = false,
-                            isSaving = false,
-                            saveSuccess = true,
-                            hasUnsavedChanges = false,
-                            showDiscardChangesDialog = false,
-                            errorMessage = null
-                        )
-                    }
-                },
-                onFailure = { exception ->
-                    _uiState.update {
-                        it.copy(
-                            isSaving = false,
-                            errorMessage = exception.localizedMessage
-                                ?: "Unable to update your profile."
-                        )
+                    if (availabilityResult.getOrNull() != true) {
+                        _uiState.update {
+                            it.copy(
+                                isSaving = false,
+                                usernameError = "This username is already taken."
+                            )
+                        }
+                        return@launch
                     }
                 }
-            )
+
+                val updatedProfile = existingProfile.copy(
+                    displayName = displayName,
+                    username = username,
+                    about = about,
+                    updatedAt = System.currentTimeMillis()
+                )
+
+                val updateResult =
+                    profileRepository.updateProfile(updatedProfile)
+
+                updateResult.fold(
+                    onSuccess = {
+                        _uiState.update {
+                            it.copy(
+                                profile = updatedProfile,
+                                isEditing = false,
+                                isSaving = false,
+                                saveSuccess = true,
+                                hasUnsavedChanges = false,
+                                showDiscardChangesDialog = false,
+                                errorMessage = null
+                            )
+                        }
+                    },
+                    onFailure = { exception ->
+                        _uiState.update {
+                            it.copy(
+                                isSaving = false,
+                                errorMessage = exception.localizedMessage
+                                    ?: "Unable to update your profile."
+                            )
+                        }
+                    }
+                )
 
             } catch (exception: kotlinx.coroutines.CancellationException) {
                 throw exception
@@ -409,6 +411,70 @@ class ProfileViewModel @Inject constructor(
     fun clearSaveSuccess() {
         _uiState.update {
             it.copy(saveSuccess = false)
+        }
+    }
+
+    // --------------------------------------------------
+    // LOGOUT
+    // --------------------------------------------------
+
+    fun onLogoutClick() {
+        if (_uiState.value.isLoggingOut) return
+
+        _uiState.update {
+            it.copy(showLogoutDialog = true)
+        }
+    }
+
+    fun dismissLogoutDialog() {
+        _uiState.update {
+            it.copy(showLogoutDialog = false)
+        }
+    }
+
+    fun confirmLogout() {
+        // Guards against double taps while a logout is already running.
+        if (_uiState.value.isLoggingOut) return
+
+        _uiState.update {
+            it.copy(
+                showLogoutDialog = false,
+                isLoggingOut = true,
+                logoutErrorMessage = null
+            )
+        }
+
+        // Stop the users/{uid} listener BEFORE signing out. Otherwise Firestore
+        // reports PERMISSION_DENIED once the session ends and the profile
+        // screen would flash an error just before navigating away.
+        observeProfileJob?.cancel()
+
+        viewModelScope.launch {
+            // Step 8 (presence): go offline here, before logout, because the
+            // database rules require a signed-in user for that write.
+
+            authRepository.logout()
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(isLoggedOut = true)
+                    }
+                }
+                .onFailure {
+                    _uiState.update {
+                        it.copy(
+                            isLoggingOut = false,
+                            logoutErrorMessage = "Couldn't log out. Please try again."
+                        )
+                    }
+                    // Still signed in, so resume the profile listener.
+                    loadProfile()
+                }
+        }
+    }
+
+    fun clearLogoutError() {
+        _uiState.update {
+            it.copy(logoutErrorMessage = null)
         }
     }
 

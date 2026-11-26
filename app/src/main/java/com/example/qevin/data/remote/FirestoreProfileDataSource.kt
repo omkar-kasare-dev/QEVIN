@@ -83,6 +83,39 @@ class FirestoreProfileDataSource @Inject constructor(
         }.await()
     }
 
+    // Creates users/{uid} only if it is missing. Returns true if it created one.
+    // Never writes a username: usernames are reserved only through
+    // createProfile/updateProfile, which also write the usernames collection.
+    suspend fun ensureProfile(profile: UserProfile): Boolean {
+
+        require(profile.uid.isNotBlank()) {
+            "User ID cannot be empty."
+        }
+
+        val userReference = usersCollection.document(profile.uid)
+
+        return firestore.runTransaction { transaction ->
+
+            if (transaction.get(userReference).exists()) {
+                return@runTransaction false
+            }
+
+            val now = Date()
+
+            val document = UserProfileDocument.fromDomain(
+                profile.copy(
+                    username = null,
+                    createdAt = now.time,
+                    updatedAt = now.time
+                )
+            )
+
+            transaction.set(userReference, document)
+
+            true
+        }.await()
+    }
+
     // Retrieve a profile using Firebase UID.
     suspend fun getProfile(uid: String): UserProfile? {
 

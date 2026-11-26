@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "978866063409",
+    "firebase_url": "https://qevin-50065-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "qevin-50065",
     "storage_bucket": "qevin-50065.firebasestorage.app"
   },
@@ -12,7 +13,20 @@
           "package_name": "com.example.qevin"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "978866063409-ul3m10ocengqgmt60g3a3cm3r7qc93h6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.qevin",
+            "certificate_hash": "fe3c5486c9c02b67a0bb77fe474dad0669c15470"
+          }
+        },
+        {
+          "client_id": "978866063409-4ibh1f275rlrqtfcf5ehulrlomaaqvfp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBlChQmbgy68lqfd9M3e8vEzGxkIgXljdU"
@@ -20,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "978866063409-4ibh1f275rlrqtfcf5ehulrlomaaqvfp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

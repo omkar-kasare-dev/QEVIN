@@ -1,33 +1,5 @@
 package com.example.qevin.presentation.navigation
 
-/*
-object AppRoute {
-
-    const val Splash = "splash"
-
-    const val Onboarding = "onboarding"
-
-    const val Login = "login"
-    const val Register = "register"
-
-    const val Home = "home"
-    const val NewChat = "new_chat"
-
-    const val Conversation = "conversation/{conversationId}"
-    const val Profile = "profile"
-    const val Settings = "settings"
-    const val Privacy = "privacy"
-    const val Search = "search"
-
-    fun conversation(conversationId: String): String {
-        return "conversation/$conversationId"
-    }
-}
-
- */
-
-
-
 object AppRoute {
 
     // First launch

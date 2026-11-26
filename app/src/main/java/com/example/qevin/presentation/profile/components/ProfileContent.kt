@@ -1,6 +1,7 @@
 package com.example.qevin.presentation.profile.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,11 +17,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,6 +46,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.TextButton
 
+// Local to this file so we don't depend on a QevinColors member that may not exist.
+private val LogoutRed = Color(0xFFE5484D)
+
 @Composable
 fun ProfileContent(
     displayName: String,
@@ -54,7 +60,12 @@ fun ProfileContent(
     onEditProfileClick: () -> Unit,
     profileImageUri: Uri? = null,
     onChangePhotoClick: () -> Unit = {},
-    onRemovePhotoClick: () -> Unit = {}
+    onRemovePhotoClick: () -> Unit = {},
+    isLoggingOut: Boolean = false,
+    showLogoutDialog: Boolean = false,
+    onLogoutClick: () -> Unit = {},
+    onConfirmLogout: () -> Unit = {},
+    onDismissLogout: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -171,7 +182,10 @@ fun ProfileContent(
                                 )
                             )
                         )
-                        .clickable(onClick = onEditProfileClick),
+                        .clickable(
+                            enabled = !isLoggingOut,
+                            onClick = onEditProfileClick
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -224,6 +238,52 @@ fun ProfileContent(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // LOG OUT BUTTON
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(
+                            width = 1.dp,
+                            color = LogoutRed.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .clickable(
+                            enabled = !isLoggingOut,
+                            onClick = onLogoutClick
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isLoggingOut) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = LogoutRed
+                        )
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.Logout,
+                                contentDescription = null,
+                                tint = LogoutRed,
+                                modifier = Modifier.size(18.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Text(
+                                text = "Log Out",
+                                color = LogoutRed,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(28.dp))
 
                 Text(
@@ -236,5 +296,43 @@ fun ProfileContent(
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
+    }
+
+    // LOG OUT CONFIRMATION
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = onDismissLogout,
+            containerColor = QevinColors.Background,
+            titleContentColor = QevinColors.TextPrimary,
+            textContentColor = QevinColors.TextSecondary,
+            title = {
+                Text(
+                    text = "Log out?",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "You will need to sign in again to see your chats."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onConfirmLogout) {
+                    Text(
+                        text = "Log Out",
+                        color = LogoutRed,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissLogout) {
+                    Text(
+                        text = "Cancel",
+                        color = QevinColors.TextSecondary
+                    )
+                }
+            }
+        )
     }
 }

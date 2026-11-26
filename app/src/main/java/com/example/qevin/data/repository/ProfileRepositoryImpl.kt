@@ -20,6 +20,12 @@ class ProfileRepositoryImpl @Inject constructor(
         dataSource.createProfile(profile)
     }
 
+    override suspend fun ensureProfile(
+        profile: UserProfile
+    ): Result<Boolean> = safeResult {
+        dataSource.ensureProfile(profile)
+    }
+
     override suspend fun getProfile(
         uid: String
     ): Result<UserProfile?> = safeResult {
