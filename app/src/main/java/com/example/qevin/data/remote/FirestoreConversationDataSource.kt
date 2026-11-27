@@ -56,6 +56,28 @@ class FirestoreConversationDataSource @Inject constructor(
         awaitClose { listener.remove() }
     }
 
+
+    //-------------------------------
+    /** One conversation. Emits null when the document is missing or malformed. */
+    fun observeConversation(conversationId: String): Flow<Conversation?> = callbackFlow {
+
+        val listener = conversationsCollection
+            .document(conversationId)
+            .addSnapshotListener { snapshot, error ->
+
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot == null) return@addSnapshotListener
+
+                trySend(if (snapshot.exists()) parse(snapshot) else null)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
     // Skips malformed documents instead of failing the whole list.
     private fun parse(document: DocumentSnapshot): Conversation? {
         return try {

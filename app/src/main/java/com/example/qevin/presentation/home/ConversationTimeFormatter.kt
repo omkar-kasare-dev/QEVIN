@@ -1,5 +1,7 @@
 package com.example.qevin.presentation.home
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -11,6 +13,7 @@ object ConversationTimeFormatter {
 
     private const val WEEKDAY_WINDOW_DAYS = 6L
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun format(
         epochMillis: Long,
         now: Instant = Instant.now(),

@@ -307,8 +307,11 @@ fun QevinNavGraph(
         // 10. Calls
         composable(AppRoute.Calls) {
             CallsScreen(
-                onCallClick = { callId ->
-                    navController.navigate(AppRoute.conversation(callId))
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onCallClick = { conversationId ->
+                    navController.navigate(AppRoute.conversation(conversationId))
                 }
             )
         }

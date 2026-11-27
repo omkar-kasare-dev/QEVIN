@@ -74,6 +74,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.example.qevin.R
 import com.example.qevin.core.designsystem.color.QevinColors
+import com.example.qevin.presentation.calls.CallsContent
 
 private enum class HomeTab(val label: String) {
     CHATS("Chats"),
@@ -101,7 +102,8 @@ private val AvatarPalette = listOf(
 )
 
 // Stable per person: the same seed always gives the same color.
-private fun avatarColorFor(seed: String): Color =
+// internal: also used by the Calls list.
+internal fun avatarColorFor(seed: String): Color =
     AvatarPalette[(seed.hashCode() and 0x7FFFFFFF) % AvatarPalette.size]
 
 @Composable
@@ -124,12 +126,12 @@ fun QEVINHomeScreen(
         when (selectedHomeTab) {
             HomeTab.CHATS -> uiState.conversations.filter { !it.isGroup }
             HomeTab.GROUPS -> uiState.conversations.filter { it.isGroup }
-            HomeTab.CALLS -> emptyList() // Phase 7
+            HomeTab.CALLS -> emptyList() // Calls render CallsContent instead
         }
     }
 
-    // The Calls tab has no data source yet, so loading/error/offline
-    // states only apply to Chats and Groups.
+    // Calls have their own data source, ViewModel and states, so the
+    // loading/error/offline handling below only applies to Chats and Groups.
     val isConversationTab = selectedHomeTab != HomeTab.CALLS
 
     Box(
@@ -213,6 +215,12 @@ fun QEVINHomeScreen(
                 when {
                     // Brief moment after logout, before navigation leaves Home.
                     uiState.isSignedOut -> Box(modifier = Modifier.fillMaxSize())
+
+                    // Calls have their own data source, state and listener.
+                    selectedHomeTab == HomeTab.CALLS -> CallsContent(
+                        onCallClick = onConversationClick,
+                        bottomPadding = 76.dp
+                    )
 
                     isConversationTab && uiState.isLoading -> LoadingState()
 
@@ -483,13 +491,22 @@ private fun ConversationAvatar(conversation: ConversationUiModel) {
             contentAlignment = Alignment.Center
         ) {
             // Always drawn. A photo, once loaded, covers it; a missing or
-            // failed photo simply leaves the initials showing.
-            Text(
-                text = conversation.initials,
-                color = Color.White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+            // failed photo leaves this fallback showing.
+            if (conversation.isGroup) {
+                Icon(
+                    imageVector = Icons.Outlined.Groups,
+                    contentDescription = "Group",
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
+            } else {
+                Text(
+                    text = conversation.initials,
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
 
             if (!conversation.photoUrl.isNullOrBlank()) {
                 AsyncImage(
@@ -585,7 +602,7 @@ private fun QevinBottomNavigation(
 }
 
 @Composable
-private fun LoadingState() {
+internal fun LoadingState() {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -595,7 +612,9 @@ private fun LoadingState() {
 }
 
 @Composable
-private fun OfflineBanner() {
+internal fun OfflineBanner(
+    message: String = "You're offline. Showing saved conversations."
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -615,7 +634,7 @@ private fun OfflineBanner() {
         Spacer(modifier = Modifier.width(8.dp))
 
         Text(
-            text = "You're offline. Showing saved conversations.",
+            text = message,
             color = QevinColors.Warning,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium
@@ -624,7 +643,7 @@ private fun OfflineBanner() {
 }
 
 @Composable
-private fun ErrorState(
+internal fun ErrorState(
     message: String,
     onRetryClick: () -> Unit
 ) {
@@ -683,10 +702,21 @@ private fun EmptyConversationState(
         HomeTab.CALLS -> Icons.Outlined.Call to "No calls yet"
     }
 
-    val subtitle = if (showOfflineHint) {
-        "Connect to the internet to load your chats."
-    } else {
-        "Your next connection starts here."
+    val subtitle = when (selectedTab) {
+        HomeTab.CHATS -> if (showOfflineHint) {
+            "Connect to the internet to load your chats."
+        } else {
+            "Tap + to start your first conversation."
+        }
+
+        HomeTab.GROUPS -> if (showOfflineHint) {
+            "Connect to the internet to load your groups."
+        } else {
+            "Groups you're part of will appear here."
+        }
+
+        // Calls render CallsContent and never reach this function.
+        HomeTab.CALLS -> ""
     }
 
     Box(

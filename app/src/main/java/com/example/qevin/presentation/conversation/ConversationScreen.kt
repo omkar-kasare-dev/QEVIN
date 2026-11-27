@@ -1,5 +1,6 @@
 package com.example.qevin.presentation.conversation
 
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,6 +32,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AttachFile
+import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.SentimentSatisfiedAlt
 import androidx.compose.material.icons.rounded.ArrowBack
@@ -44,7 +46,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -55,28 +56,20 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.qevin.core.designsystem.color.QevinColors
-
-// Temparory
-import androidx.compose.runtime.LaunchedEffect // already imported
-import androidx.compose.ui.platform.LocalContext
-import android.widget.Toast
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-
-private data class ChatMessage(
-    val id: Int,
-    val text: String,
-    val time: String,
-    val isSent: Boolean,
-    val isRead: Boolean = false
-)
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import com.example.qevin.core.designsystem.color.QevinColors
 
 @Composable
 fun ConversationScreen(
@@ -87,44 +80,19 @@ fun ConversationScreen(
     onMoreClick: () -> Unit = {},
     viewModel: ConversationViewModel = hiltViewModel()
 ) {
-    val contactName = getContactName(conversationId)
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val messages by viewModel.messages.collectAsStateWithLifecycle()
+
+    // Real conversations use the loaded title. Sample IDs ("rahul", ...) fall
+    // back to the old lookup. While loading, show nothing rather than flicker.
+    val contactName = uiState.title
+        ?: if (uiState.isLoading) "" else getContactName(conversationId)
 
     val context = LocalContext.current
     LaunchedEffect(viewModel) {
         viewModel.errors.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
         }
-    }
-
-    val messages = remember(conversationId) {
-        mutableStateListOf(
-            ChatMessage(
-                id = 1,
-                text = "Hey! How are you?",
-                time = "9:20 PM",
-                isSent = false
-            ),
-            ChatMessage(
-                id = 2,
-                text = "I'm good 😊",
-                time = "9:21 PM",
-                isSent = true,
-                isRead = true
-            ),
-            ChatMessage(
-                id = 3,
-                text = "Let's catch up later?",
-                time = "9:22 PM",
-                isSent = false
-            ),
-            ChatMessage(
-                id = 4,
-                text = "Sure! Sounds good 👍",
-                time = "9:23 PM",
-                isSent = true,
-                isRead = true
-            )
-        )
     }
 
     var messageText by remember(conversationId) {
@@ -134,7 +102,7 @@ fun ConversationScreen(
     val listState = rememberLazyListState()
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
 
-    // Scroll to bottom when a new message arrives or when the keyboard opens
+    // Scroll to the newest message when one arrives or when the keyboard opens
     LaunchedEffect(messages.size, imeBottom > 0) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.lastIndex)
@@ -157,6 +125,11 @@ fun ConversationScreen(
             topBar = {
                 ChatHeader(
                     contactName = contactName,
+                    initials = uiState.initials,
+                    photoUrl = uiState.photoUrl,
+                    isGroup = uiState.isGroup,
+                    isOnline = uiState.isOnline,
+                    statusLabel = uiState.statusLabel,
                     onBackClick = onBackClick,
                     onVoiceCallClick = onVoiceCallClick,
                     onVideoCallClick = onVideoCallClick,
@@ -170,16 +143,7 @@ fun ConversationScreen(
                     onSendClick = {
                         val trimmedMessage = messageText.trim()
                         if (trimmedMessage.isNotEmpty()) {
-                            messages.add(
-                                ChatMessage(
-                                    id = (messages.maxOfOrNull { it.id } ?: 0) + 1,
-                                    text = trimmedMessage,
-                                    time = "Now",
-                                    isSent = true,
-                                    isRead = false
-                                )
-                            )
-                            // Temp
+                            // The sent message appears through the live list.
                             viewModel.sendMessage(trimmedMessage)
                             messageText = ""
                         }
@@ -187,28 +151,43 @@ fun ConversationScreen(
                 )
             }
         ) { innerPadding ->
-            LazyColumn(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
-                state = listState,
-                contentPadding = PaddingValues(
-                    horizontal = 12.dp,
-                    vertical = 12.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                    .padding(innerPadding)
             ) {
-                items(
-                    items = messages,
-                    key = { it.id }
-                ) { message ->
-                    ChatMessageBubble(message = message)
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    contentPadding = PaddingValues(
+                        horizontal = 12.dp,
+                        vertical = 12.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(
+                        items = messages,
+                        key = { it.id }
+                    ) { message ->
+                        ChatMessageBubble(message = message)
+                    }
+                }
+
+                if (messages.isEmpty() && !uiState.isLoading) {
+                    Text(
+                        text = "No messages yet.\nSay hello 👋",
+                        color = QevinColors.TextSecondary,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
             }
         }
     }
 }
 
+// Fallback for local sample IDs only. Real conversations use the loaded title.
 private fun getContactName(conversationId: String): String {
     return when (conversationId.lowercase()) {
         "rahul" -> "Rahul Sharma"
@@ -223,6 +202,11 @@ private fun getContactName(conversationId: String): String {
 @Composable
 private fun ChatHeader(
     contactName: String,
+    initials: String,
+    photoUrl: String?,
+    isGroup: Boolean,
+    isOnline: Boolean,
+    statusLabel: String?,
     onBackClick: () -> Unit,
     onVoiceCallClick: () -> Unit,
     onVideoCallClick: () -> Unit,
@@ -268,12 +252,32 @@ private fun ChatHeader(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = contactName.take(1).uppercase(),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
+                // Always drawn. A loaded photo covers it; a missing or failed
+                // photo leaves this fallback showing.
+                if (isGroup) {
+                    Icon(
+                        imageVector = Icons.Outlined.Groups,
+                        contentDescription = "Group",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Text(
+                        text = initials.ifEmpty { contactName.take(1).uppercase() },
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                }
+
+                if (!photoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = photoUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(10.dp))
@@ -290,25 +294,29 @@ private fun ChatHeader(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(1.dp))
+                if (statusLabel != null) {
+                    Spacer(modifier = Modifier.height(1.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(QevinColors.Success)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isOnline) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(QevinColors.Success)
+                            )
 
-                    Spacer(modifier = Modifier.width(4.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
 
-                    Text(
-                        text = "Online",
-                        color = QevinColors.TextSecondary,
-                        fontSize = 10.sp
-                    )
+                        Text(
+                            text = statusLabel,
+                            color = QevinColors.TextSecondary,
+                            fontSize = 10.sp
+                        )
+                    }
                 }
             }
 
@@ -360,7 +368,7 @@ private fun ChatHeader(
 
 @Composable
 private fun ChatMessageBubble(
-    message: ChatMessage
+    message: MessageUiModel
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -410,7 +418,7 @@ private fun ChatMessageBubble(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = message.time,
+                    text = message.timeLabel,
                     color = Color.White.copy(alpha = 0.7f),
                     fontSize = 9.sp
                 )
@@ -418,9 +426,10 @@ private fun ChatMessageBubble(
                 if (message.isSent) {
                     Spacer(modifier = Modifier.width(4.dp))
 
+                    // Delivery and read receipts arrive in Phase 5.
                     Text(
-                        text = if (message.isRead) "✓✓" else "✓",
-                        color = if (message.isRead) QevinColors.Lavender else Color.White.copy(alpha = 0.7f),
+                        text = "✓",
+                        color = Color.White.copy(alpha = 0.7f),
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold
                     )

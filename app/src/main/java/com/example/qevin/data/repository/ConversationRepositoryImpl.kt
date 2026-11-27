@@ -2,6 +2,7 @@ package com.example.qevin.data.repository
 
 
 import com.example.qevin.data.remote.FirestoreConversationDataSource
+import com.example.qevin.domain.model.Conversation
 import com.example.qevin.domain.model.ConversationsSnapshot
 import com.example.qevin.domain.repository.ConversationRepository
 import kotlinx.coroutines.flow.Flow
@@ -18,5 +19,10 @@ class ConversationRepositoryImpl @Inject constructor(
         dataSource
             .observeConversations(uid)
             // Metadata-only events (e.g. pending-write flags) shouldn't recompose the list.
+            .distinctUntilChanged()
+
+    override fun observeConversation(conversationId: String): Flow<Conversation?> =
+        dataSource
+            .observeConversation(conversationId)
             .distinctUntilChanged()
 }
