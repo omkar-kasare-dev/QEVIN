@@ -319,8 +319,14 @@ fun QevinNavGraph(
         // 11. People
         composable(AppRoute.People) {
             PeopleScreen(
-                onContactClick = { contactId ->
-                    navController.navigate(AppRoute.conversation(contactId))
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onContactClick = { conversationId ->
+                    navController.navigate(AppRoute.conversation(conversationId))
+                },
+                onFindPeopleClick = {
+                    navController.navigate(AppRoute.NewChat)
                 }
             )
         }
